@@ -3,75 +3,137 @@
 <head>
   <meta charset="UTF-8" />
   <title>Cropper.js Circular Crop Improved</title>
-  <link
-    href="https://cdn.jsdelivr.net/npm/cropperjs@1.5.13/dist/cropper.min.css"
-    rel="stylesheet"
-  />
+  <link href="https://cdn.jsdelivr.net/npm/cropperjs@1.5.13/dist/cropper.min.css" rel="stylesheet"/>
   <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: sans-serif;
+      background-color: #f4f6f9;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    h2 { margin-bottom: 20px; color: #333; }
+
+    label {
+      font-weight: bold;
+      display: block;
+      margin: 10px 0 5px;
+      text-align: left;
+    }
+
+    input[type="file"], input[type="text"] {
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      width: 300px;
+    }
+
+    .input-group {
+      margin-bottom: 10px;
+      text-align: center;
+    }
+
+    .error-text {
+      color: red;
+      font-size: 14px;
+      margin-top: 5px;
+    }
+
+    .container {
+      background: #fff;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      text-align: center;
+      max-width: 800px;
+      width: 100%;
+    }
+
     #crop-container {
       width: 300px;
       height: 300px;
-      margin-bottom: 10px;
-      position: relative;
+      margin: 0 auto;
     }
+
     .cropper-crop-box,
     .cropper-view-box {
       border-radius: 50% !important;
       box-shadow: 0 0 0 1px #39f;
     }
-    .cropper-crop-box {
-      cursor: move;
-    }
-    img {
-      max-width: 100%;
-      display: block;
-    }
+
+    img { max-width: 100%; display: block; }
 
     #result-container {
       display: flex;
-      gap: 20px;
-      align-items: center;
+      gap: 30px;
+      justify-content: center;
+      flex-wrap: wrap;
       margin-top: 20px;
     }
 
     #croppedResult {
       border-radius: 50%;
-      border: 1px solid #ccc;
+      border: 2px solid #ccc;
       width: 200px;
       height: 200px;
       object-fit: cover;
     }
 
-    #successMessage {
-      color: green;
-      font-weight: bold;
-      margin-top: 10px;
+    #successMessage { color: green; font-weight: bold; margin-top: 10px; }
+    #errorMessage { color: red; margin-top: 10px; }
+
+    button {
+      padding: 10px 20px;
+      margin-top: 20px;
+      font-size: 16px;
+      border: none;
+      border-radius: 6px;
+      background-color: #007bff;
+      color: white;
+      cursor: pointer;
+      transition: background 0.3s;
     }
+
+    button:hover { background-color: #0056b3; }
   </style>
 </head>
 <body>
-  <h2>Upload and Crop Image as Circle</h2>
-  <h4>1.คลิกเลือกไฟล์รูปภาพ</h4>
-  <h4>2.ตั้งชื่อไฟล์ใหม่ให้เป็นชื่อในรูปแบบ Name (Nick) Surname (ไม่มีทีม) เพื่อให้ตรงกับในระบบเพื่อการ Map รูปได้</h4>
-  <h4>3.Ctrl + Scroll Mouse เพื่อซูม คลิกลากเมาส์ เพื่อจัดตำแหน่ง</h4>
+  <div class="container">
+    <h2>Upload and Crop Image as Circle</h2>
 
-  <input type="file" id="inputImage" accept="image/*" /><br /><br />
-  <label for="filename">Enter new image filename:</label>
-  <input type="text" id="filename" placeholder="e.g., Name (Nick) Surname" /><br /><br />
-
-  <div id="result-container">
-    <div id="crop-container">
-      <img id="image" />
+    <div class="input-group">
+      <label>1. คลิกเลือกไฟล์รูปภาพ</label>
+      <input type="file" id="inputImage" accept="image/*" />
     </div>
 
-    <div>
-      <h3>Cropped Image Result (Base64 with transparent circle)</h3>
-      <img id="croppedResult" />
-      <div id="successMessage"></div>
+    <div class="input-group">
+      <label>2. ตั้งชื่อไฟล์ (Name (Nick) Surname)</label>
+      <input type="text" id="filename" placeholder="e.g., John (Jay) Doe" />
+      <div id="filenameError" class="error-text"></div>
     </div>
+
+    <div class="input-group">
+      <label>3. Ctrl + Scroll เพื่อซูม, ลากเมาส์เพื่อจัดตำแหน่ง</label>
+    </div>
+
+    <div id="result-container">
+      <div id="crop-container"><img id="image" /></div>
+      <div>
+        <h3>Cropped Image Result</h3>
+        <img id="croppedResult" />
+        <div id="successMessage"></div>
+        <div id="errorMessage"></div>
+      </div>
+    </div>
+
+    <button id="cropBtn">Submit Cropped Image</button>
   </div>
-
-  <button id="cropBtn">Crop, Name & Send to n8n</button>
 
   <script src="https://cdn.jsdelivr.net/npm/cropperjs@1.5.13/dist/cropper.min.js"></script>
   <script>
@@ -80,19 +142,18 @@
     const cropBtn = document.getElementById('cropBtn');
     const croppedResult = document.getElementById('croppedResult');
     const filenameInput = document.getElementById('filename');
+    const filenameError = document.getElementById('filenameError');
     const successMessage = document.getElementById('successMessage');
+    const errorMessage = document.getElementById('errorMessage');
 
     let cropper;
 
     inputImage.addEventListener('change', (event) => {
       const file = event.target.files[0];
       if (!file) return;
-
       const url = URL.createObjectURL(file);
       image.src = url;
-
       if (cropper) cropper.destroy();
-
       image.onload = () => {
         cropper = new Cropper(image, {
           aspectRatio: 1,
@@ -109,11 +170,22 @@
     });
 
     cropBtn.addEventListener('click', () => {
-      if (!cropper) return alert('Please upload and crop an image first.');
-      const filename = filenameInput.value.trim();
-      if (!filename) return alert('Please enter a filename.');
+      filenameError.textContent = '';
+      successMessage.textContent = '';
+      errorMessage.textContent = '';
 
-      const size = 600; // เพิ่มความละเอียด
+      if (!cropper) {
+        errorMessage.textContent = 'กรุณาอัปโหลดและครอปรูปก่อน';
+        return;
+      }
+
+      const filename = filenameInput.value.trim();
+      if (!filename) {
+        filenameError.textContent = 'กรุณากรอกชื่อไฟล์';
+        return;
+      }
+
+      const size = 600;
       const canvas = cropper.getCroppedCanvas({
         width: size,
         height: size,
@@ -125,7 +197,6 @@
       circleCanvas.width = size;
       circleCanvas.height = size;
       const ctx = circleCanvas.getContext('2d');
-
       ctx.clearRect(0, 0, size, size);
       ctx.beginPath();
       ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
@@ -135,9 +206,7 @@
 
       const base64 = circleCanvas.toDataURL('image/png');
       croppedResult.src = base64;
-      successMessage.textContent = ''; // clear ก่อน
 
-      // ส่งไปยัง n8n webhook
       fetch('https://pb-n8n.planbmedia.co.th/webhook/image-upload', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -150,13 +219,11 @@
         if (!response.ok) throw new Error('Network response was not ok');
         return response.json().catch(() => ({}));
       })
-      .then(data => {
-        successMessage.textContent = 'ส่งรูปสำเร็จ!';
-        console.log('Response:', data);
+      .then(() => {
+        successMessage.textContent = '✅ ส่งรูปสำเร็จ!';
       })
-      .catch(err => {
-        console.error('Error sending to n8n:', err);
-        alert('Failed to send to n8n.');
+      .catch(() => {
+        errorMessage.textContent = '❌ การส่งรูปไปยังเซิร์ฟเวอร์ล้มเหลว';
       });
     });
   </script>
